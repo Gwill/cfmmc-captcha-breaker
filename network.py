@@ -37,7 +37,7 @@ def create_model(training=True):
     else:
         x = K.layers.Dropout(0)(x)
     x = [K.layers.Dense(NUM_OF_CLASSES, activation='softmax', name='c%d'%(i+1))(x) for i in range(NUM_OF_LABELS)]
-    model = K.models.Model(input=input_tensor, output=x)
+    model = K.models.Model(inputs=input_tensor, outputs=x)
 
     model.compile(loss='categorical_crossentropy',
                   optimizer='adadelta',
