@@ -5,11 +5,16 @@ import random
 import shutil
 import glob
 import numpy as np
+import uuid
 from configs import *
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 current_dir = os.path.dirname(__file__)
-fontType = os.path.join(current_dir, "luxirb.ttf")
+font_types = [os.path.join(current_dir, font_name)
+            for font_name
+            in
+            ['luxirb.ttf', 'times.ttf', 'timesbd.ttf', 'LFAX.TTF', 'LBRITE.TTF', 'LFAXD.TTF',
+             'LBRITED.TTF', 'DejaVuSerif.ttf', 'DejaVuSerif-Bold.ttf', 'dustismo-roman.regular.ttf']]
 bg_image = os.path.join(current_dir, "background.jpg")
 out_dir = os.path.join(current_dir, "mycaptchas")
 
@@ -21,12 +26,11 @@ def create_validate_code(size=(WIDTH, HEIGHT),
                          bg_image=bg_image,
                          fg_color=(255, 255, 255),
                          font_size=19,
-                         font_type=fontType,
                          char_length=NUM_OF_LABELS,
                          draw_lines=True,
                          n_line=(10, 16),
                          min_length=1,
-                         max_length=12,
+                         max_length=25,
                          draw_points=False,
                          point_chance=2):
     '''
@@ -57,7 +61,7 @@ def create_validate_code(size=(WIDTH, HEIGHT),
         create_lines(draw, min_length, max_length, n_line, width, height)
     if draw_points:
         create_points(draw, point_chance, width, height)
-    strs = create_strs(draw, chars, char_length, font_type, font_size, width, height, fg_color)
+    strs = create_strs(draw, chars, char_length, font_size, width, height, fg_color)
     # # 图形扭曲参数
     # params = [1 - float(random.randint(1, 2)) / 100,
     #           0,
@@ -70,6 +74,12 @@ def create_validate_code(size=(WIDTH, HEIGHT),
     #           ]
     # img = img.transform(size, Image.PERSPECTIVE, params) # 创建扭曲
     img = img.filter(ImageFilter.DETAIL)  # 滤镜，边界加强（阈值更大）
+    filename = '{}.jpg'.format(uuid.uuid4().hex)
+    img.save(filename, "JPEG", quality=50, optimize=True, progressive=True)
+    img = Image.open(filename)
+    os.remove(filename)
+
+    img = binarization(img)
     return img, strs
 
 
@@ -100,7 +110,7 @@ def create_points(draw, point_chance, width, height):
                 draw.point((w, h), fill=(0, 0, 0))
 
 
-def create_strs(draw, chars, char_length, font_type, font_size, width, height, fg_color):
+def create_strs(draw, chars, char_length, font_size, width, height, fg_color):
     '''绘制验证码字符'''
     '''生成给定长度的字符串，返回列表格式'''
     # c_chars = random.sample(chars, length) # sample产生的是unique的char
@@ -109,6 +119,7 @@ def create_strs(draw, chars, char_length, font_type, font_size, width, height, f
         c_chars = np.random.choice(list(chars), char_length).tolist()
         strs = ''.join(c_chars)  # 每个字符前后以空格隔开
 
+        font_type = np.random.choice(font_types)
         font = ImageFont.truetype(font_type, font_size)
         font_width, font_height = font.getsize(strs)
 
@@ -116,9 +127,10 @@ def create_strs(draw, chars, char_length, font_type, font_size, width, height, f
             start_x = random.randrange(0, width - font_width)
             start_y = random.randrange(0, height - font_height)
         except ValueError as e:
-            print(e)
-            print(strs)
-            print(width, font_width, height, font_height)
+            #print(e)
+            #print(strs)
+            #print(width, font_width, height, font_height)
+            pass
         else:
             flag = True
 
@@ -127,16 +139,17 @@ def create_strs(draw, chars, char_length, font_type, font_size, width, height, f
 
 
 def binarization(image):
-    binarized_img = Image.new("L", size=image.size)
-    for i in range(image.size[0]):
-        for j in range(image.size[1]):
-            r, g, b = image.convert('RGB').getpixel((i, j))
-            value = int(0.299 * r + 0.587 * g + 0.114 * b)
-            if value < 180:
-                binarized_img.putpixel((i, j), 255)
-            else:
-                binarized_img.putpixel((i, j), 0)
-    return binarized_img
+    binarized_img = Image.new("RGB", size=image.size)
+    image = image.convert('RGB')
+    arr = np.asarray(image)
+    x = arr[:,:,0] * 0.299 + arr[:,:,1] * 0.587 +arr[:,:,2] * 0.114
+    x[x<180]= 0
+    x[x>=180]=255
+    y = np.zeros((25,96,3), np.uint8)
+    y[...,0] = x
+    y[...,1] = x
+    y[...,2] = x
+    return Image.fromarray(y)
 
 
 if __name__ == "__main__":

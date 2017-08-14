@@ -5,7 +5,7 @@ import CaptchaGenerator.generate_captcha as capgen
 from configs import *
 
 
-def gen(batch_size=32):
+def gen(batch_size=64):
     X = np.zeros((batch_size, HEIGHT, WIDTH, NUM_CHANNELS), dtype=np.uint8)
     y = [np.zeros((batch_size, NUM_OF_CLASSES), dtype=np.uint8) for i in range(NUM_OF_LABELS)]
     while True:
