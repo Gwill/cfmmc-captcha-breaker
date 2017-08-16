@@ -1,7 +1,6 @@
 # coding: utf8
 import numpy as np
 import keras as K
-import CaptchaGenerator.generate_captcha as capgen
 from configs import *
 
 
